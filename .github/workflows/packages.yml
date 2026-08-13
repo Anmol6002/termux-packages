@@ -418,16 +418,62 @@ jobs:
                 -o "Packages-${repo}-${arch}.bz2"
               7z x "Packages-${repo}-${arch}.bz2" > /dev/null
             fi
-            result=$(find debs -maxdepth 1 -type f | cut -d"/" -f2 | xargs -P$(nproc) -i{} grep "^Filename:.*/{}$" -nH "Packages-${repo}-${arch}" || true)
-            if [ -n "$result" ]; then
-              echo "$result" | grep -E "${arch}|all" || true
-              error=1
+            if [ ! -f "Contents-${repo}-${arch}" ]; then
+              echo "[*] Downloading ${url}/dists/${distribution}/Contents-${arch}.gz"
+              curl -s \
+                --user-agent 'Termux-Packages/1.0\ (https://github.com/termux/termux-packages)' \
+                "${url}/dists/${distribution}/Contents-${arch}.gz" \
+                -o "Contents-${repo}-${arch}.gz"
+              gunzip -k "Contents-${repo}-${arch}.gz"
             fi
+
+            for deb in debs/*.deb; do
+              [ -f "$deb" ] || continue
+              deb_arch=$(dpkg-deb -f "$deb" Architecture)
+              if [ "$deb_arch" != "$arch" ] && [ "$deb_arch" != "all" ]; then
+                continue
+              fi
+              pkg_name=$(dpkg-deb -f "$deb" Package)
+
+              # Check that this exact .deb filename isn't already published (missed revbump).
+              if grep -q "^Filename:.*/$(basename "$deb")\$" "Packages-${repo}-${arch}"; then
+                echo "[!] \"$(basename "$deb")\" (${repo}/${arch}) already exists on the server"
+                error=1
+              fi
+
+              # Check that this .deb doesn't ship a file already owned by a different
+              # published package, unless a Conflicts/Replaces relation is declared.
+              declared=$( { dpkg-deb -f "$deb" Conflicts; dpkg-deb -f "$deb" Replaces; } |
+                tr ',' '\n' | sed -E 's/\(.*\)//; s/^[[:space:]]+//; s/[[:space:]]+$//' | sed '/^$/d')
+
+              conflicts=$(dpkg-deb -c "$deb" | awk '{print $6}' | sed -E 's|^\./||' |
+                awk 'NR==FNR{want[$0];next} $1 in want' - "Contents-${repo}-${arch}" |
+                while read -r path owners; do
+                  IFS=',' read -r -a owner_list <<< "$owners"
+                  for owner in "${owner_list[@]}"; do
+                    [ "$owner" = "$pkg_name" ] && continue
+                    grep -qx "$owner" <<< "$declared" && continue
+                    owner_declared=$(awk -v pkg="$owner" '
+                      $0 == "Package: " pkg { found=1 }
+                      found && /^(Conflicts|Replaces):/ { print }
+                      found && /^$/ { found=0 }
+                    ' "Packages-${repo}-${arch}" |
+                      sed -E 's/^(Conflicts|Replaces): *//' | tr ',' '\n' |
+                      sed -E 's/\(.*\)//; s/^[[:space:]]+//; s/[[:space:]]+$//')
+                    grep -qx "$pkg_name" <<< "$owner_declared" && continue
+                    echo "[!] \"$pkg_name\" and \"$owner\" (${repo}/${arch}) both ship \"$path\", with no Conflicts/Replaces declared"
+                  done
+                done)
+              if [ -n "$conflicts" ]; then
+                echo "$conflicts"
+                error=1
+              fi
+            done
           done
         done
         if [ "$error" != 0 ]; then
-          echo "[!] Found local files same name with server files!"
-          echo "[!] Please revbump package, rebase or tag commit with '%ci:no-build'"
+          echo "[!] Found local files same name with server files, or undeclared file conflicts with published packages!"
+          echo "[!] Please revbump package, rebase, add Conflicts/Replaces, or tag commit with '%ci:no-build'"
           exit 1
         fi
 
