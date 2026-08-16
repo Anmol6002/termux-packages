@@ -29,7 +29,6 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -Dshared-llvm=enabled
 -Dplatforms=x11,wayland
 -Dgallium-drivers=llvmpipe,softpipe,virgl,zink,freedreno
--Dfreedreno-kmds=msm,kgsl
 -Dgallium-rusticl=true
 -Dglvnd=enabled
 -Dxmlconfig=disabled
@@ -79,6 +78,7 @@ termux_step_pre_configure() {
 	local _vk_drivers="swrast"
 	if [ $TERMUX_ARCH = "arm" ] || [ $TERMUX_ARCH = "aarch64" ]; then
 		_vk_drivers+=",freedreno"
+		TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dfreedreno-kmds=msm,kgsl"
 	fi
 	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dvulkan-drivers=$_vk_drivers"
 }
