@@ -4,7 +4,7 @@ TERMUX_PKG_LICENSE="MIT"
 TERMUX_PKG_LICENSE_FILE="docs/license.rst"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION="26.2.0"
-TERMUX_PKG_REVISION=2
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://archive.mesa3d.org/mesa-${TERMUX_PKG_VERSION}.tar.xz
 TERMUX_PKG_SHA256=efd4bb08cdb7c365a812cd4e6c9202ab55b2f22cdcd13c7d6c4f9647b799a4ef
 TERMUX_PKG_AUTO_UPDATE=true
@@ -37,6 +37,9 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 termux_step_post_get_source() {
 	# Do not use meson wrap projects
 	rm -rf subprojects
+
+	# Force vtn_bindgen2 to build as a target binary across the multi-arch matrix
+	sed -i 's/native : not meson.can_run_host_binaries(),/native : false,/g' src/compiler/spirv/meson.build
 }
 
 termux_step_pre_configure() {
