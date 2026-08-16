@@ -37,9 +37,6 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 termux_step_post_get_source() {
 	# Do not use meson wrap projects
 	rm -rf subprojects
-
-	# Force vtn_bindgen2 to build as a target binary across the multi-arch matrix
-	sed -i 's/native : not meson.can_run_host_binaries(),/native : false,/g' src/compiler/spirv/meson.build
 }
 
 termux_step_pre_configure() {
