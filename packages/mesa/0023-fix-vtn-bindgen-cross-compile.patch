@@ -1,0 +1,35 @@
+--- a/src/compiler/spirv/meson.build
++++ b/src/compiler/spirv/meson.build
+@@ -74,13 +74,21 @@
+   sources : [spirv_info_h],
+ )
+ 
++idep_vtn_native = declare_dependency(
++  dependencies : [dep_spirv_tools.as_native(), idep_nir.as_native(), idep_mesautil.as_native()],
++  link_with : libvtn.get_static_lib(native: true),
++  sources : [spirv_info_h],
++)
++
+ spirv2nir = executable(
+   'spirv2nir',
+   files('spirv2nir.c') + [
+    vtn_generator_ids_h,
+   ],
+-  dependencies : [dep_m, idep_vtn, idep_mesautil],
++  dependencies : [dep_m, idep_vtn_native, idep_mesautil.as_native()],
+   include_directories : [inc_include, inc_src],
++  native : true,
+   c_args : [c_msvc_compat_args, no_override_init_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : with_tools.contains('nir'),
+@@ -92,7 +100,7 @@
+      'vtn_bindgen2',
+      ['vtn_bindgen2.c'],
+      include_directories : [inc_include, inc_src],
+-     c_args : [c_msvc_compat_args, no_override_init_args],
+-     dependencies : [idep_vtn, idep_mesautil, idep_nir],
++     c_args : [c_msvc_compat_args, no_override_init_args],
++     dependencies : [idep_vtn_native, idep_mesautil.as_native(), idep_nir.as_native()],
+      # If we can run host binaries directly, just build vtn_bindgen for the host.
+      # Most commonly this happens when doing a cross compile from an x86_64 build
+      
