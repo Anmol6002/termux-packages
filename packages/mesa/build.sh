@@ -7,7 +7,7 @@ TERMUX_PKG_VERSION="26.2.0"
 TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://archive.mesa3d.org/mesa-${TERMUX_PKG_VERSION}.tar.xz
 TERMUX_PKG_SHA256=efd4bb08cdb7c365a812cd4e6c9202ab55b2f22cdcd13c7d6c4f9647b799a4ef
-TERMUX_PKG_AUTO_UPDATE=true
+TERMUX_PKG_AUTO_UPDATE=false 
 TERMUX_PKG_DEPENDS="libandroid-shmem, libc++, libdrm, libglvnd, libllvm (<< $TERMUX_LLVM_NEXT_MAJOR_VERSION), libwayland, libx11, libxext, libxfixes, libxshmfence, libxxf86vm, ncurses, vulkan-loader, zlib, zstd"
 TERMUX_PKG_SUGGESTS="mesa-dev"
 TERMUX_PKG_BUILD_DEPENDS="libclc, libwayland-protocols, libxrandr, llvm, llvm-tools, mlir, spirv-tools, xorgproto"
@@ -28,7 +28,6 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -Dllvm=enabled
 -Dshared-llvm=enabled
 -Dplatforms=x11,wayland
--Dgallium-drivers=llvmpipe,softpipe,virgl,zink,freedreno
 -Dgallium-rusticl=true
 -Dglvnd=enabled
 -Dxmlconfig=disabled
@@ -76,11 +75,14 @@ termux_step_pre_configure() {
 	export PATH="${_WRAPPER_BIN}:${CARGO_HOME}/bin:${PATH}"
 
 	local _vk_drivers="swrast"
+    local _opengl_drivers="llvmpipe,softpipe,virgl,zink"
 	if [ $TERMUX_ARCH = "arm" ] || [ $TERMUX_ARCH = "aarch64" ]; then
 		_vk_drivers+=",freedreno"
+		_opengl_drivers+=",freedreno"
 		TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dfreedreno-kmds=msm,kgsl"
 	fi
 	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dvulkan-drivers=$_vk_drivers"
+    TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dgallium-drivers=$_opengl_drivers"
 }
 
 termux_step_post_configure() {
