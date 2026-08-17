@@ -75,14 +75,14 @@ termux_step_pre_configure() {
 	export PATH="${_WRAPPER_BIN}:${CARGO_HOME}/bin:${PATH}"
 
 	local _vk_drivers="swrast"
-    local _opengl_drivers="llvmpipe,softpipe,virgl,zink"
+	local _opengl_drivers="llvmpipe,softpipe,virgl,zink"
 	if [ $TERMUX_ARCH = "arm" ] || [ $TERMUX_ARCH = "aarch64" ]; then
 		_vk_drivers+=",freedreno"
 		_opengl_drivers+=",freedreno"
 		TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dfreedreno-kmds=msm,kgsl"
 	fi
-  	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dvulkan-drivers=$_vk_drivers"
- 	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dgallium-drivers=$_opengl_drivers"
+	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dvulkan-drivers=$_vk_drivers"
+	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dgallium-drivers=$_opengl_drivers"
 }
 
 termux_step_post_configure() {
