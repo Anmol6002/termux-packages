@@ -111,7 +111,7 @@ termux_step_post_configure() {
 }
 
 termux_step_post_make_install() {
-    # Create symlinks
+	# Create symlinks    
 	ln -sf libEGL_mesa.so "${TERMUX_PREFIX}/lib/libEGL_mesa.so.0"
 	ln -sf libGLX_mesa.so "${TERMUX_PREFIX}/lib/libGLX_mesa.so.0"
 	ln -sf libRusticlOpenCL.so "${TERMUX_PREFIX}/lib/libRusticlOpenCL.so.1"
