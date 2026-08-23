@@ -84,28 +84,6 @@ termux_step_pre_configure() {
 	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -Dgallium-drivers=$_opengl_drivers"
 }
 
-termux_step_configure() {
-	termux_setup_meson
-	termux_setup_proot
-
-	# Wrap mesa_clc with termux-proot-run
-	# bypasses:
-	# ../src/src/compiler/spirv/meson.build:83:23:
-	# ERROR: Tried to mix a host machine library ("vtn")
-	# with a build machine target "vtn_bindgen2"
-	# This is not possible in a cross build.
-	if [[ "$TERMUX_ON_DEVICE_BUILD" == "false" ]]; then
-		mkdir -p "$TERMUX_PKG_TMPDIR/bin"
-		local TERMUX_MESON_MESA_CROSSFILE="$TERMUX_PKG_TMPDIR/mesa-cross-file.txt"
-		cp -f "$TERMUX_MESON_CROSSFILE" "$TERMUX_MESON_MESA_CROSSFILE"
-		sed -i "s|^\(\[binaries\]\)$|\1\nexe_wrapper = 'termux-proot-run'|g" \
-			"$TERMUX_MESON_MESA_CROSSFILE"
-		TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" --cross-file $TERMUX_MESON_MESA_CROSSFILE"
-	fi
-
-	termux_step_configure_meson
-}
-
 termux_step_post_configure() {
 	rm -f $_WRAPPER_BIN/cmake
 }
