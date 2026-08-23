@@ -107,14 +107,32 @@ termux_step_configure() {
 }
 
 termux_step_post_configure() {
-	rm -f "$_WRAPPER_BIN/cmake"
+	rm -f $_WRAPPER_BIN/cmake
 }
 
 termux_step_post_make_install() {
-	# Create symlinks
-	ln -sf libEGL_mesa.so "${TERMUX_PREFIX}/lib/libEGL_mesa.so.0"
-	ln -sf libGLX_mesa.so "${TERMUX_PREFIX}/lib/libGLX_mesa.so.0"
-	ln -sf libRusticlOpenCL.so "${TERMUX_PREFIX}/lib/libRusticlOpenCL.so.1"
+	# Avoid hard links
+	local f1
+	for f1 in $TERMUX_PREFIX/lib/dri/*; do
+		if [ ! -f "${f1}" ]; then
+			continue
+		fi
+		local f2
+		for f2 in $TERMUX_PREFIX/lib/dri/*; do
+			if [ -f "${f2}" ] && [ "${f1}" != "${f2}" ]; then
+				local s1=$(stat -c "%i" "${f1}")
+				local s2=$(stat -c "%i" "${f2}")
+				if [ "${s1}" = "${s2}" ]; then
+					ln -sfr "${f1}" "${f2}"
+				fi
+			fi
+		done
+	done
 
+	# Create symlinks
+	ln -sf libEGL_mesa.so ${TERMUX_PREFIX}/lib/libEGL_mesa.so.0
+	ln -sf libGLX_mesa.so ${TERMUX_PREFIX}/lib/libGLX_mesa.so.0
+	ln -sf libRusticlOpenCL.so ${TERMUX_PREFIX}/lib/libRusticlOpenCL.so.1
+	
 	unset BINDGEN_EXTRA_CLANG_ARGS LLVM_CONFIG
 }
