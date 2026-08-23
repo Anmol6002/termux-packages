@@ -1,0 +1,34 @@
+--- a/src/gallium/drivers/freedreno/a6xx/fd6_emit.cc
++++ b/src/gallium/drivers/freedreno/a6xx/fd6_emit.cc
+@@ -220,13 +220,9 @@
+    struct fd6_context *fd6_ctx = fd6_context(ctx);
+    struct fd6_lrz_state lrz = compute_lrz_state(emit);
+ 
+-   /* If the LRZ state has not changed, we can skip the emit: */
+-   if (!ctx->last.dirty && (fd6_ctx->last.lrz.val == lrz.val))
+-      return NULL;
+-
+    fd6_ctx->last.lrz = lrz;
+ 
+-   unsigned nregs = 4;
++   unsigned nregs = (CHIP >= A7XX) ? 5 : 4;
+    fd_crb crb(ctx->batch->submit, nregs);
+ 
+    crb.add(GRAS_LRZ_CNTL(CHIP,
+@@ -237,8 +233,14 @@
+                .z_bounds_enable = lrz.z_bounds_enable,
+                .fc_enable = false,   /* a6xx only */
+                .disable_on_wrong_dir = false,  /* a6xx only */
+-      ))
+-      .add(A6XX_RB_LRZ_CNTL(.enable = lrz.enable, ))
++      ));
++   if (CHIP >= A7XX) {
++      crb.add(GRAS_LRZ_CNTL2(CHIP,
++               .disable_on_wrong_dir = false,
++               .fc_enable = false,
++      ));
++   }
++   crb.add(A6XX_RB_LRZ_CNTL(.enable = lrz.enable, ))
+       .add(A6XX_RB_DEPTH_PLANE_CNTL(.z_mode = lrz.z_mode, ))
+       .add(GRAS_SU_DEPTH_PLANE_CNTL(CHIP, .z_mode = lrz.z_mode, ));
+ 

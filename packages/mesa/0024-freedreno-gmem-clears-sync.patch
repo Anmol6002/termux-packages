@@ -1,0 +1,55 @@
+--- a/src/gallium/drivers/freedreno/a6xx/fd6_blitter.cc	2026-08-17 21:08:35.413100004 +0200
++++ b/src/gallium/drivers/freedreno/a6xx/fd6_blitter.cc	2026-08-17 21:08:35.418537953 +0200
+@@ -283,6 +283,17 @@
+       .add(CP_BLIT_0(.op = BLIT_OP_SCALE));
+ 
+    fd6_set_rb_dbg_eco_mode<CHIP>(ctx, cs, false);
++
++   fd6_event_write<CHIP>(ctx, cs, FD_CCU_CLEAN_COLOR);
++   fd6_event_write<CHIP>(ctx, cs, FD_CCU_CLEAN_DEPTH);
++   fd6_event_write<CHIP>(ctx, cs, FD_CCU_CLEAN_BLIT_CACHE);
++   fd6_emit_flushes<CHIP>(ctx, cs,
++                          FD6_FLUSH_CCU_COLOR |
++                          FD6_INVALIDATE_CCU_COLOR |
++                          FD6_FLUSH_CCU_DEPTH |
++                          FD6_INVALIDATE_CCU_DEPTH |
++                          FD6_INVALIDATE_CCHE |
++                          FD6_WAIT_FOR_IDLE);
+ }
+ 
+ /* nregs: 5 */
+--- a/src/gallium/drivers/freedreno/a6xx/fd6_emit.cc	2026-08-17 21:08:35.415458122 +0200
++++ b/src/gallium/drivers/freedreno/a6xx/fd6_emit.cc	2026-08-17 21:08:35.418757481 +0200
+@@ -784,6 +784,8 @@
+          .add(VPC_BV_POS_BUF_GMEM_SIZE(CHIP, cfg->vpc_bv_pos_buf_size))
+          .add(PC_BV_POS_BUF_GMEM_SIZE(CHIP, cfg->vpc_bv_pos_buf_size));
+    } else if (CHIP == A7XX) {
++      fd_pkt7(cs, CP_WAIT_FOR_IDLE, 0);
++
+       fd_pkt4(cs, 1)
+          .add(RB_CCU_CACHE_CNTL(CHIP,
+             .depth_offset_hi = depth_offset_hi,
+--- a/src/gallium/drivers/freedreno/a6xx/fd6_gmem.cc	2026-08-17 21:08:35.417802464 +0200
++++ b/src/gallium/drivers/freedreno/a6xx/fd6_gmem.cc	2026-08-17 21:08:35.419405016 +0200
+@@ -1699,6 +1699,13 @@
+ 
+       fd6_event_write<CHIP>(batch->ctx, cs, FD_CCU_RESOLVE);
+    }
++
++   fd6_emit_flushes<CHIP>(batch->ctx, cs,
++                          FD6_FLUSH_CCU_COLOR |
++                          FD6_INVALIDATE_CCU_COLOR |
++                          FD6_FLUSH_CCU_DEPTH |
++                          FD6_INVALIDATE_CCU_DEPTH |
++                          FD6_WAIT_FOR_IDLE);
+ }
+ 
+ /*
+@@ -1957,6 +1964,7 @@
+          trace_start_clears(&batch->trace, cs, subpass->fast_cleared);
+          emit_conditional_ib<CHIP>(cs, batch, tile, subpass->subpass_clears);
+          trace_end_clears(&batch->trace, cs);
++         fd6_emit_flushes<CHIP>(batch->ctx, cs, FD6_WAIT_FOR_IDLE);
+       }
+ 
+       emit_lrz<CHIP>(cs, batch, subpass);

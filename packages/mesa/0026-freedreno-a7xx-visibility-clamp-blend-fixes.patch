@@ -1,0 +1,53 @@
+--- a/src/gallium/drivers/freedreno/a6xx/fd6_blend.cc
++++ b/src/gallium/drivers/freedreno/a6xx/fd6_blend.cc
+@@ -69,17 +69,25 @@
+       else
+          rt = &cso->rt[0];
+ 
++      bool blend_en = rt->blend_enable || (CHIP >= A7XX);
++      enum adreno_rb_blend_factor rgb_src = rt->blend_enable ? fd_blend_factor(rt->rgb_src_factor) : FACTOR_ONE;
++      enum a3xx_rb_blend_opcode rgb_op = rt->blend_enable ? blend_func(rt->rgb_func) : BLEND_DST_PLUS_SRC;
++      enum adreno_rb_blend_factor rgb_dst = rt->blend_enable ? fd_blend_factor(rt->rgb_dst_factor) : FACTOR_ZERO;
++      enum adreno_rb_blend_factor a_src = rt->blend_enable ? fd_blend_factor(rt->alpha_src_factor) : FACTOR_ONE;
++      enum a3xx_rb_blend_opcode a_op = rt->blend_enable ? blend_func(rt->alpha_func) : BLEND_DST_PLUS_SRC;
++      enum adreno_rb_blend_factor a_dst = rt->blend_enable ? fd_blend_factor(rt->alpha_dst_factor) : FACTOR_ZERO;
++
+       crb.add(A6XX_RB_MRT_BLEND_CONTROL(i,
+-                 .rgb_src_factor = fd_blend_factor(rt->rgb_src_factor),
+-                 .rgb_blend_opcode = blend_func(rt->rgb_func),
+-                 .rgb_dest_factor = fd_blend_factor(rt->rgb_dst_factor),
+-                 .alpha_src_factor = fd_blend_factor(rt->alpha_src_factor),
+-                 .alpha_blend_opcode = blend_func(rt->alpha_func),
+-                 .alpha_dest_factor = fd_blend_factor(rt->alpha_dst_factor),
++                 .rgb_src_factor = rgb_src,
++                 .rgb_blend_opcode = rgb_op,
++                 .rgb_dest_factor = rgb_dst,
++                 .alpha_src_factor = a_src,
++                 .alpha_blend_opcode = a_op,
++                 .alpha_dest_factor = a_dst,
+                ))
+         .add(A6XX_RB_MRT_CONTROL(i,
+-                 .color_blend_en = rt->blend_enable,
+-                 .alpha_blend_en = rt->blend_enable,
++                 .color_blend_en = blend_en,
++                 .alpha_blend_en = blend_en,
+                  .rop_enable = cso->logicop_enable,
+                  .rop_code = rop,
+                  .component_enable = rt->colormask,
+@@ -87,13 +95,13 @@
+ 
+       if (CHIP == A8XX) {
+          crb.add(SP_MRT_BLEND_CNTL_REG(CHIP, i,
+-                 .color_blend_en = rt->blend_enable,
+-                 .alpha_blend_en = rt->blend_enable,
++                 .color_blend_en = blend_en,
++                 .alpha_blend_en = blend_en,
+                  .component_write_mask = rt->colormask,
+          ));
+       }
+ 
+-      if (rt->blend_enable) {
++      if (blend_en) {
+          mrt_blend |= (1 << i);
+       }
+ 

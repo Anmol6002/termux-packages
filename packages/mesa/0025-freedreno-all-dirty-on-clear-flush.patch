@@ -1,0 +1,32 @@
+--- a/src/gallium/drivers/freedreno/freedreno_draw.c	2026-08-17 21:19:19.803749755 +0200
++++ b/src/gallium/drivers/freedreno/freedreno_draw.c	2026-08-17 21:19:19.806960554 +0200
+@@ -507,9 +507,7 @@
+       fd_batch_update_queries(batch);
+ 
+       if (ctx->clear(ctx, buffers, color, depth, stencil)) {
+-         if (FD_DBG(DCLEAR))
+-            fd_context_all_dirty(ctx);
+-
++         fd_context_all_dirty(ctx);
+          fallback = false;
+       }
+    }
+--- a/src/gallium/drivers/freedreno/freedreno_batch.c	2026-08-17 21:19:19.806199870 +0200
++++ b/src/gallium/drivers/freedreno/freedreno_batch.c	2026-08-17 21:19:19.807123427 +0200
+@@ -145,6 +145,7 @@
+    assert(!batch->nondraw);
+ 
+    struct fd_batch_subpass *subpass = subpass_create(batch);
++   fd_context_all_dirty(batch->ctx);
+ 
+    /* This new subpass inherits the current subpass.. this is replaced
+     * if there is a depth clear
+@@ -381,6 +382,8 @@
+    assert(batch->reference.count > 0);
+ 
+    cleanup_submit(batch);
++
++   fd_context_all_dirty(batch->ctx);
+ }
+ 
+ void

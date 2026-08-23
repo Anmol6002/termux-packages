@@ -1,0 +1,100 @@
+--- a/src/gallium/drivers/freedreno/freedreno_batch.c	2026-08-17 23:23:26.804343321 +0200
++++ b/src/gallium/drivers/freedreno/freedreno_batch.c	2026-08-17 23:23:36.944196994 +0200
+@@ -376,6 +376,14 @@
+    if (batch->fence)
+       fd_pipe_fence_ref(&batch->ctx->last_fence, batch->fence);
+ 
++   static int fd_trace_env = -1;
++   if (unlikely(fd_trace_env == -1))
++      fd_trace_env = getenv("FD_TRACE") ? atoi(getenv("FD_TRACE")) : 0;
++   if (unlikely(fd_trace_env > 0)) {
++      fprintf(stderr, "[FD_TRACE][BATCH_FLUSH] batch=%p draws=%u cleared=0x%x resolve=0x%x\n",
++              batch, batch->num_draws, batch->cleared, batch->resolve);
++   }
++
+    fd_gmem_render_tiles(batch);
+ 
+    assert(batch->reference.count > 0);
+--- a/src/gallium/drivers/freedreno/freedreno_draw.c	2026-08-17 23:23:26.797315691 +0200
++++ b/src/gallium/drivers/freedreno/freedreno_draw.c	2026-08-17 23:23:34.048238836 +0200
+@@ -360,6 +360,26 @@
+    batch->num_draws++;
+    batch->subpass->num_draws++;
+ 
++   static int fd_trace_env = -1;
++   if (unlikely(fd_trace_env == -1))
++      fd_trace_env = getenv("FD_TRACE") ? atoi(getenv("FD_TRACE")) : 0;
++   if (unlikely(fd_trace_env > 0)) {
++      struct pipe_rasterizer_state *rast = ctx->rasterizer;
++      struct pipe_blend_state *blend = ctx->blend;
++      struct pipe_depth_stencil_alpha_state *zsa = ctx->zsa;
++      fprintf(stderr, "[FD_TRACE][DRAW #%u] mode=%d count=%u indexed=%d blend=%d(op=%d,dst=%d) alpha_test=%d depth_test=%d(func=%d,mask=%d) scissor=%d\n",
++              batch->num_draws, info->mode, draws ? draws[0].count : 0,
++              info->index_size != 0,
++              blend ? blend->rt[0].blend_enable : -1,
++              blend ? blend->rt[0].rgb_func : -1,
++              blend ? blend->rt[0].rgb_dst_factor : -1,
++              zsa ? zsa->alpha_enabled : -1,
++              zsa ? zsa->depth_enabled : -1,
++              zsa ? zsa->depth_func : -1,
++              zsa ? zsa->depth_writemask : -1,
++              rast ? rast->scissor : -1);
++   }
++
+    fd_print_dirty_state(ctx->dirty);
+ 
+    /* Marking the batch as needing flush must come after the batch
+@@ -506,6 +526,17 @@
+    if (ctx->clear) {
+       fd_batch_update_queries(batch);
+ 
++      static int fd_trace_env = -1;
++      if (unlikely(fd_trace_env == -1))
++         fd_trace_env = getenv("FD_TRACE") ? atoi(getenv("FD_TRACE")) : 0;
++      if (unlikely(fd_trace_env > 0)) {
++         fprintf(stderr, "[FD_TRACE][CLEAR] buffers=0x%x color=(%f,%f,%f,%f) depth=%f stencil=%u\n",
++                 buffers,
++                 color ? color->f[0] : 0, color ? color->f[1] : 0,
++                 color ? color->f[2] : 0, color ? color->f[3] : 0,
++                 depth, stencil);
++      }
++
+       if (ctx->clear(ctx, buffers, color, depth, stencil)) {
+          if (FD_DBG(DCLEAR))
+             fd_context_all_dirty(ctx);
+--- a/src/gallium/drivers/freedreno/freedreno_gmem.c	2026-08-17 23:23:26.814096194 +0200
++++ b/src/gallium/drivers/freedreno/freedreno_gmem.c	2026-08-17 23:23:40.228149497 +0200
+@@ -758,6 +758,15 @@
+ 
+    ctx->stats.batch_total++;
+ 
++   static int fd_trace_env = -1;
++   if (unlikely(fd_trace_env == -1))
++      fd_trace_env = getenv("FD_TRACE") ? atoi(getenv("FD_TRACE")) : 0;
++   if (unlikely(fd_trace_env > 0)) {
++      fprintf(stderr, "[FD_TRACE][RENDER_TILES] sysmem=%d autotune=%d draws=%u cleared=0x%x\n",
++              sysmem, ctx->emit_sysmem_prep ? fd_autotune_use_bypass(&ctx->autotune, batch) : -1,
++              batch->num_draws, batch->cleared);
++   }
++
+    if (batch->nondraw) {
+       DBG("%p: rendering non-draw", batch);
+       if (!fd_ringbuffer_empty(batch->draw))
+--- a/src/gallium/frontends/dri/dri_drawable.c	2026-08-17 23:23:26.818335445 +0200
++++ b/src/gallium/frontends/dri/dri_drawable.c	2026-08-17 23:23:43.440102991 +0200
+@@ -519,6 +519,15 @@
+        reason == __DRI2_NOTHROTTLE_SWAPBUFFER)
+       flush_flags |= ST_FLUSH_END_OF_FRAME;
+ 
++   static int fd_trace_env = -1;
++   if (unlikely(fd_trace_env == -1))
++      fd_trace_env = getenv("FD_TRACE") ? atoi(getenv("FD_TRACE")) : 0;
++   if (unlikely(fd_trace_env > 0 && (reason == __DRI2_THROTTLE_SWAPBUFFER || reason == __DRI2_NOTHROTTLE_SWAPBUFFER))) {
++      static uint64_t frame_count = 0;
++      fprintf(stderr, "[FD_TRACE][SWAP_BUFFERS #%" PRIu64 "] flags=0x%x reason=%d\n",
++              ++frame_count, flags, reason);
++   }
++
+    /* Flush the context and throttle if needed. */
+    if (ctx->screen->throttle &&
+        drawable &&

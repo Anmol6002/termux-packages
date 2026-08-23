@@ -1,0 +1,24 @@
+Disable VK_EXT_depth_clip_control in Turnip so that Zink falls back to
+nir_lower_clip_halfz shader lowering, fixing depth range, Z-fighting,
+and layer penetration in OpenGL applications using compatibility profiles.
+
+--- a/src/freedreno/vulkan/tu_device.cc
++++ b/src/freedreno/vulkan/tu_device.cc
+@@ -273,7 +273,7 @@ tu_physical_device_get_supported_extensions(const struct tu_physical_device *de
+       .EXT_custom_border_color = true,
+       .EXT_custom_resolve = true,
+       .EXT_depth_clamp_zero_one = true,
+-      .EXT_depth_clip_control = true,
++      .EXT_depth_clip_control = false,
+       .EXT_depth_clip_enable = true,
+       .EXT_descriptor_buffer = true,
+       .EXT_descriptor_indexing = true,
+@@ -623,7 +623,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+    features->depthClampZeroOne = true;
+ 
+    /* VK_EXT_depth_clip_control */
+-   features->depthClipControl = true;
++   features->depthClipControl = false;
+ 
+    /* VK_EXT_depth_clip_enable */
+    features->depthClipEnable = true;
